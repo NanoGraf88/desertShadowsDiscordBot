@@ -3,9 +3,25 @@ from discord import app_commands
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+from threading import Thread
+from flask import Flask
 
 # Load environment variables
 load_dotenv()
+
+# Create Flask app for health checks (for Render.com)
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!", 200
+
+@app.route('/health')
+def health():
+    return "OK", 200
+
+def run_flask():
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 10000)))
 
 # Configuration
 class Config:
@@ -419,4 +435,8 @@ async def setautoroles_command(
     )
 
 # Login to Discord
+if __name__ == '__main__':
+    # Start Flask server in a separate thread
+    Thread(target=run_flask, daemon=True).start()
+
 bot.run(os.getenv('DISCORD_TOKEN'))
