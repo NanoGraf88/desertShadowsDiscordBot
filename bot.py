@@ -41,10 +41,76 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Server whitelist
 ALLOWED_GUILD_ID = 1343366735478132838
 
+# ===== PERSISTENT DROPDOWN VIEW FOR REACTION ROLES =====
+class PersistentRoleSelectView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)  # This makes it persistent!
+    
+    @discord.ui.select(
+        placeholder="Choose your timezone",
+        min_values=0,
+        max_values=1,
+        custom_id="timezone_select",  # Important: custom_id makes it persistent across restarts
+        options=[
+            discord.SelectOption(label="GMT-8 (PST)", description="Pacific Standard Time", value="role_gmt8", emoji="🌊"),
+            discord.SelectOption(label="GMT-5 (EST)", description="Eastern Standard Time", value="role_gmt5", emoji="🌆"),
+            discord.SelectOption(label="GMT±0 (GMT)", description="Greenwich Mean Time", value="role_gmt0", emoji="🌧️"),
+            discord.SelectOption(label="GMT+1 (CET)", description="Central European Time", value="role_gmt1", emoji="🏰"),
+            discord.SelectOption(label="GMT+2 (EET)", description="Eastern European Time", value="role_gmt2", emoji="🌲"),
+            discord.SelectOption(label="GMT+3 (ARAT)", description="Arabia Standard Time", value="role_gmt3", emoji="🏜️"),
+            discord.SelectOption(label="GMT+8 (CST)", description="China Standard Time", value="role_gmt8_cst", emoji="🏯"),
+            discord.SelectOption(label="GMT+9 (JST)", description="Japan Standard Time", value="role_gmt9", emoji="🎌"),
+            discord.SelectOption(label="GMT+10 (AEST)", description="Australian Eastern Time", value="role_gmt10", emoji="🐨")
+        ]
+    )
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
+        # Map selection values to actual role IDs
+        role_map = {
+            'role_gmt8': 1446396768223887361,      # GMT-8 (PST)
+            'role_gmt5': 1446396812264210483,      # GMT-5 (EST)
+            'role_gmt0': 1446396816626024478,      # GMT±0 (GMT)
+            'role_gmt1': 1446396816797990943,      # GMT+1 (CET)
+            'role_gmt2': 1446396817372872764,      # GMT+2 (EET)
+            'role_gmt3': 1446396818127585381,      # GMT+3 (ARAT)
+            'role_gmt8_cst': 1446396818589094009,  # GMT+8 (CST)
+            'role_gmt9': 1446396819134222490,      # GMT+9 (JST)
+            'role_gmt10': 1446396975367847939      # GMT+10 (AEST)
+        }
+        
+        selected_roles = [role_map[value] for value in select.values]
+        member = interaction.user
+        
+        try:
+            # Remove all mapped roles first
+            all_mapped_roles = [interaction.guild.get_role(role_id) for role_id in role_map.values()]
+            all_mapped_roles = [r for r in all_mapped_roles if r and r in member.roles]
+            
+            if all_mapped_roles:
+                await member.remove_roles(*all_mapped_roles)
+            
+            # Add selected roles
+            roles_to_add = [interaction.guild.get_role(role_id) for role_id in selected_roles]
+            roles_to_add = [r for r in roles_to_add if r]
+            
+            if roles_to_add:
+                await member.add_roles(*roles_to_add)
+                await interaction.response.send_message('✅ Your roles have been updated!', ephemeral=True)
+            else:
+                await interaction.response.send_message('✅ Your timezone roles have been removed!', ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(
+                f'❌ Failed to update roles. Make sure the bot has permission and its role is above the roles being assigned.\nError: {e}',
+                ephemeral=True
+            )
+
 # ===== BOT READY EVENT =====
 @bot.event
 async def on_ready():
     print(f'✅ Bot is online as {bot.user}')
+    
+    # Register the persistent view so it works after bot restarts
+    bot.add_view(PersistentRoleSelectView())
+    
     try:
         synced = await bot.tree.sync()
         print(f'✅ Synced {len(synced)} slash commands')
@@ -307,6 +373,7 @@ async def on_member_update(before, after):
     description="Embed description",
     color="Embed color (hex code like #FF0000)"
 )
+@app_commands.default_permissions(administrator=True)
 async def embed_command(interaction: discord.Interaction, title: str, description: str, color: str = "#0099ff"):
     try:
         # Convert hex color to discord.Color
@@ -323,80 +390,21 @@ async def embed_command(interaction: discord.Interaction, title: str, descriptio
     except Exception as e:
         await interaction.response.send_message(f'❌ Error creating embed: {e}', ephemeral=True)
 
-# ===== SLASH COMMAND: REACTION ROLES =====
-@bot.tree.command(name="reactionroles", description="Create a reaction role menu")
+# ===== SLASH COMMAND: REACTION ROLES (NOW PERSISTENT) =====
+@bot.tree.command(name="reactionroles", description="Create a persistent reaction role menu")
 @app_commands.describe(title="Menu title")
+@app_commands.default_permissions(administrator=True)
 async def reactionroles_command(interaction: discord.Interaction, title: str):
     embed = discord.Embed(
         title=title,
-        description='Select your roles from the dropdown below!',
+        description='Select your roles from the dropdown below!\n\n**This menu will stay active even after bot restarts.**',
         color=discord.Color.green()
     )
     
-    # Create dropdown menu
-    view = RoleSelectView()
+    # Create persistent dropdown menu
+    view = PersistentRoleSelectView()
     
     await interaction.response.send_message(embed=embed, view=view)
-
-# ===== DROPDOWN VIEW FOR REACTION ROLES =====
-class RoleSelectView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    
-    @discord.ui.select(
-        placeholder="Choose your timezone",
-        min_values=0,
-        max_values=1,
-        options=[
-            discord.SelectOption(label="GMT-8 (PST)", description="Pacific Standard Time", value="role_gmt8", emoji="🌊"),
-            discord.SelectOption(label="GMT-5 (EST)", description="Eastern Standard Time", value="role_gmt5", emoji="🌆"),
-            discord.SelectOption(label="GMT±0 (GMT)", description="Greenwich Mean Time", value="role_gmt0", emoji="🌧️"),
-            discord.SelectOption(label="GMT+1 (CET)", description="Central European Time", value="role_gmt1", emoji="🏰"),
-            discord.SelectOption(label="GMT+2 (EET)", description="Eastern European Time", value="role_gmt2", emoji="🌲"),
-            discord.SelectOption(label="GMT+3 (ARAT)", description="Arabia Standard Time", value="role_gmt3", emoji="🏜️"),
-            discord.SelectOption(label="GMT+8 (CST)", description="China Standard Time", value="role_gmt8_cst", emoji="🏯"),
-            discord.SelectOption(label="GMT+9 (JST)", description="Japan Standard Time", value="role_gmt9", emoji="🎌"),
-            discord.SelectOption(label="GMT+10 (AEST)", description="Australian Eastern Time", value="role_gmt10", emoji="🐨")
-        ]
-    )
-    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
-        # Map selection values to actual role IDs
-        role_map = {
-            'role_gmt8': 1446396768223887361,      # GMT-8 (PST)
-            'role_gmt5': 1446396812264210483,      # GMT-5 (EST)
-            'role_gmt0': 1446396816626024478,      # GMT±0 (GMT)
-            'role_gmt1': 1446396816797990943,      # GMT+1 (CET)
-            'role_gmt2': 1446396817372872764,      # GMT+2 (EET)
-            'role_gmt3': 1446396818127585381,      # GMT+3 (ARAT)
-            'role_gmt8_cst': 1446396818589094009,      # GMT+8 (CST)
-            'role_gmt9': 1446396819134222490,      # GMT+9 (JST)
-            'role_gmt10': 1446396975367847939      # GMT+10 (AEST)
-        }
-        
-        selected_roles = [role_map[value] for value in select.values]
-        member = interaction.user
-        
-        try:
-            # Remove all mapped roles first
-            all_mapped_roles = [interaction.guild.get_role(role_id) for role_id in role_map.values()]
-            all_mapped_roles = [r for r in all_mapped_roles if r and r in member.roles]
-            
-            if all_mapped_roles:
-                await member.remove_roles(*all_mapped_roles)
-            
-            # Add selected roles
-            roles_to_add = [interaction.guild.get_role(role_id) for role_id in selected_roles]
-            roles_to_add = [r for r in roles_to_add if r]
-            
-            if roles_to_add:
-                await member.add_roles(*roles_to_add)
-            
-            await interaction.response.send_message('✅ Your roles have been updated!', ephemeral=True)
-        except Exception as e:
-            await interaction.response.send_message(
-                f'❌ Failed to update roles. Make sure the bot has permission and its role is above the roles being assigned.\nError: {e}',
-                ephemeral=True
-            )
 
 # ===== SLASH COMMAND: SET LOG CHANNEL =====
 @bot.tree.command(name="setlogchannel", description="Set the channel for message logs")
@@ -438,5 +446,5 @@ async def setautoroles_command(
 if __name__ == '__main__':
     # Start Flask server in a separate thread
     Thread(target=run_flask, daemon=True).start()
-
-bot.run(os.getenv('DISCORD_TOKEN'))
+    
+    bot.run(os.getenv('DISCORD_TOKEN'))
