@@ -103,7 +103,7 @@ class PersistentRoleSelectView(discord.ui.View):
                 ephemeral=True
             )
 
-# ===== PERSISTENT DROPDOWN VIEW FOR NOTIFICATION REACTION ROLE =====
+# ===== PERSISTENT DROPDOWN VIEW FOR NOTIFCATION REACTION ROLE =====
 class PersistentQRCodeRoleView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -169,14 +169,80 @@ class PersistentQRCodeRoleView(discord.ui.View):
                 ephemeral=True
             )
 
+# ===== PERSISTENT DROPDOWN VIEW FOR AGE REACTION ROLES =====
+class PersistentAgeRoleView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.select(
+        placeholder="Choose your age range",
+        min_values=0,
+        max_values=1,
+        custom_id="age_select",  # Unique custom_id
+        options=[
+            discord.SelectOption(
+                label="Under 18", 
+                description="For members under 18 years old", 
+                value="role_under_18", 
+                emoji="🧒"
+            ),
+            discord.SelectOption(
+                label="18-25", 
+                description="For members aged 18-25", 
+                value="role_18_25", 
+                emoji="👤"
+            ),
+            discord.SelectOption(
+                label="26+", 
+                description="For members aged 26 and above", 
+                value="role_26_plus", 
+                emoji="👔"
+            )
+        ]
+    )
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
+        # Map selection values to actual role IDs
+        role_map = {
+            'role_under_18': 1461809958629802004,  # Under 18
+            'role_18_25': 1461810122962501770,      # 18-25
+            'role_26_plus': 1461810144756109547,    # 26+
+        }
+        
+        selected_roles = [role_map[value] for value in select.values]
+        member = interaction.user
+        
+        try:
+            # Remove all age roles first
+            all_mapped_roles = [interaction.guild.get_role(role_id) for role_id in role_map.values()]
+            all_mapped_roles = [r for r in all_mapped_roles if r and r in member.roles]
+            
+            if all_mapped_roles:
+                await member.remove_roles(*all_mapped_roles)
+            
+            # Add selected role
+            roles_to_add = [interaction.guild.get_role(role_id) for role_id in selected_roles]
+            roles_to_add = [r for r in roles_to_add if r]
+            
+            if roles_to_add:
+                await member.add_roles(*roles_to_add)
+                await interaction.response.send_message(f'✅ Your age role has been updated to {roles_to_add[0].name}!', ephemeral=True)
+            else:
+                await interaction.response.send_message('✅ Your age role has been removed!', ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(
+                f'❌ Failed to update role. Make sure the bot has permission and its role is above the age roles.\nError: {e}',
+                ephemeral=True
+            )
+
 # ===== BOT READY EVENT =====
 @bot.event
 async def on_ready():
     print(f'✅ Bot is online as {bot.user}')
     
-    # Register both persistent views so they work after bot restarts
+    # Register all persistent views so they work after bot restarts
     bot.add_view(PersistentRoleSelectView())
     bot.add_view(PersistentQRCodeRoleView())
+    bot.add_view(PersistentAgeRoleView())
     
     try:
         synced = await bot.tree.sync()
@@ -486,6 +552,22 @@ async def notificationroles_command(interaction: discord.Interaction, title: str
     
     # Create persistent dropdown menu
     view = PersistentQRCodeRoleView()
+    
+    await interaction.response.send_message(embed=embed, view=view)
+
+# ===== SLASH COMMAND: AGE REACTION ROLES =====
+@bot.tree.command(name="ageroles", description="Create a persistent age role menu")
+@app_commands.describe(title="Menu title")
+@app_commands.default_permissions(administrator=True)
+async def ageroles_command(interaction: discord.Interaction, title: str = "Age Roles"):
+    embed = discord.Embed(
+        title=title,
+        description='Select your age range from the dropdown below!',
+        color=discord.Color.orange()
+    )
+    
+    # Create persistent dropdown menu
+    view = PersistentAgeRoleView()
     
     await interaction.response.send_message(embed=embed, view=view)
 
