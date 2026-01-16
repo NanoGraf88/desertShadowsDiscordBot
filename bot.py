@@ -111,7 +111,7 @@ class PersistentQRCodeRoleView(discord.ui.View):
     @discord.ui.select(
         placeholder="Choose notification roles",
         min_values=0,
-        max_values=1,  # Change this when you add more roles
+        max_values=3,
         custom_id="qr_code_select",  # Unique custom_id
         options=[
             discord.SelectOption(
@@ -119,6 +119,18 @@ class PersistentQRCodeRoleView(discord.ui.View):
                 description="Get pinged when new Brawl Stars QR codes are available", 
                 value="role_bs_freebies", 
                 emoji="🎁"
+            ),
+            discord.SelectOption(
+                label="Club Updates", 
+                description="Get notified about club news and updates", 
+                value="role_club_updates", 
+                emoji="📢"
+            ),
+            discord.SelectOption(
+                label="Mega Pig Reminder", 
+                description="Get reminded about Mega Pig events", 
+                value="role_mega_pig", 
+                emoji="🐷"
             )
         ]
     )
@@ -126,7 +138,8 @@ class PersistentQRCodeRoleView(discord.ui.View):
         # Map selection values to actual role IDs
         role_map = {
             'role_bs_freebies': 1461507728584474687,  # BS Freebies
-            # Add more roles here in the future
+            'role_club_updates': 1461523179045388441,  # Club Updates
+            'role_mega_pig': 1461523237815980229,      # Mega Pig Reminder
         }
         
         selected_roles = [role_map[value] for value in select.values]
