@@ -41,7 +41,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Server whitelist
 ALLOWED_GUILD_ID = 1343366735478132838
 
-# ===== PERSISTENT DROPDOWN VIEW FOR REACTION ROLES =====
+# ===== PERSISTENT DROPDOWN VIEW FOR TIMEZONE REACTION ROLES =====
 class PersistentRoleSelectView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)  # This makes it persistent!
@@ -103,13 +103,67 @@ class PersistentRoleSelectView(discord.ui.View):
                 ephemeral=True
             )
 
+# ===== PERSISTENT DROPDOWN VIEW FOR NOTIFICATION REACTION ROLE =====
+class PersistentQRCodeRoleView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.select(
+        placeholder="Choose notification roles",
+        min_values=0,
+        max_values=1,  # Change this when you add more roles
+        custom_id="qr_code_select",  # Unique custom_id
+        options=[
+            discord.SelectOption(
+                label="BS Freebies", 
+                description="Get pinged when new Brawl Stars QR codes are available", 
+                value="role_bs_freebies", 
+                emoji="🎁"
+            )
+        ]
+    )
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
+        # Map selection values to actual role IDs
+        role_map = {
+            'role_bs_freebies': 1461507728584474687,  # BS Freebies
+            # Add more roles here in the future
+        }
+        
+        selected_roles = [role_map[value] for value in select.values]
+        member = interaction.user
+        
+        try:
+            # Remove all notification roles first
+            all_mapped_roles = [interaction.guild.get_role(role_id) for role_id in role_map.values()]
+            all_mapped_roles = [r for r in all_mapped_roles if r and r in member.roles]
+            
+            if all_mapped_roles:
+                await member.remove_roles(*all_mapped_roles)
+            
+            # Add selected roles
+            roles_to_add = [interaction.guild.get_role(role_id) for role_id in selected_roles]
+            roles_to_add = [r for r in roles_to_add if r]
+            
+            if roles_to_add:
+                await member.add_roles(*roles_to_add)
+                role_names = ', '.join([r.name for r in roles_to_add])
+                await interaction.response.send_message(f'✅ Your notification roles have been updated! Added: {role_names}', ephemeral=True)
+            else:
+                await interaction.response.send_message('✅ All notification roles have been removed!', ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(
+                f'❌ Failed to update roles. Make sure the bot has permission and its role is above the notification roles.\nError: {e}',
+                ephemeral=True
+            )
+
 # ===== BOT READY EVENT =====
 @bot.event
 async def on_ready():
     print(f'✅ Bot is online as {bot.user}')
     
-    # Register the persistent view so it works after bot restarts
+    # Register both persistent views so they work after bot restarts
     bot.add_view(PersistentRoleSelectView())
+    bot.add_view(PersistentQRCodeRoleView())
     
     try:
         synced = await bot.tree.sync()
@@ -390,19 +444,35 @@ async def embed_command(interaction: discord.Interaction, title: str, descriptio
     except Exception as e:
         await interaction.response.send_message(f'❌ Error creating embed: {e}', ephemeral=True)
 
-# ===== SLASH COMMAND: REACTION ROLES (NOW PERSISTENT) =====
-@bot.tree.command(name="reactionroles", description="Create a persistent reaction role menu")
+# ===== SLASH COMMAND: TIMEZONE REACTION ROLES =====
+@bot.tree.command(name="timezoneroles", description="Create a persistent timezone reaction role menu")
 @app_commands.describe(title="Menu title")
 @app_commands.default_permissions(administrator=True)
-async def reactionroles_command(interaction: discord.Interaction, title: str):
+async def timezoneroles_command(interaction: discord.Interaction, title: str):
     embed = discord.Embed(
         title=title,
-        description='Select your roles from the dropdown below!\n\n**This menu will stay active even after bot restarts.**',
+        description='Select your timezone from the dropdown below!',
         color=discord.Color.green()
     )
     
     # Create persistent dropdown menu
     view = PersistentRoleSelectView()
+    
+    await interaction.response.send_message(embed=embed, view=view)
+
+# ===== SLASH COMMAND: NOTIFICATION REACTION ROLES =====
+@bot.tree.command(name="notificationroles", description="Create a persistent notification role menu")
+@app_commands.describe(title="Menu title")
+@app_commands.default_permissions(administrator=True)
+async def notificationroles_command(interaction: discord.Interaction, title: str = "Notification Roles"):
+    embed = discord.Embed(
+        title=title,
+        description='Select the role below to receive notifications!',
+        color=discord.Color.purple()
+    )
+    
+    # Create persistent dropdown menu
+    view = PersistentQRCodeRoleView()
     
     await interaction.response.send_message(embed=embed, view=view)
 
