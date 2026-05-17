@@ -53,11 +53,13 @@ class PersistentRoleSelectView(discord.ui.View):
         custom_id="timezone_select",  # Important: custom_id makes it persistent across restarts
         options=[
             discord.SelectOption(label="GMT-8 (PST)", description="Pacific Standard Time", value="role_gmt8", emoji="🌊"),
+            discord.SelectOption(label="GMT-6 (CT)", description="Central Standard Time", value="role_gmt6", emoji="🌵"),
             discord.SelectOption(label="GMT-5 (EST)", description="Eastern Standard Time", value="role_gmt5", emoji="🌆"),
             discord.SelectOption(label="GMT±0 (GMT)", description="Greenwich Mean Time", value="role_gmt0", emoji="🌧️"),
             discord.SelectOption(label="GMT+1 (CET)", description="Central European Time", value="role_gmt1", emoji="🏰"),
             discord.SelectOption(label="GMT+2 (EET)", description="Eastern European Time", value="role_gmt2", emoji="🌲"),
             discord.SelectOption(label="GMT+3 (ARAT)", description="Arabia Standard Time", value="role_gmt3", emoji="🏜️"),
+            discord.SelectOption(label="GMT+4 (GST)", description="Gulf Standard Time", value="role_gmt4", emoji="🌴"),
             discord.SelectOption(label="GMT+8 (CST)", description="China Standard Time", value="role_gmt8_cst", emoji="🏯"),
             discord.SelectOption(label="GMT+9 (JST)", description="Japan Standard Time", value="role_gmt9", emoji="🎌"),
             discord.SelectOption(label="GMT+10 (AEST)", description="Australian Eastern Time", value="role_gmt10", emoji="🐨")
@@ -67,11 +69,13 @@ class PersistentRoleSelectView(discord.ui.View):
         # Map selection values to actual role IDs
         role_map = {
             'role_gmt8': 1446396768223887361,      # GMT-8 (PST)
+            'role_gmt6': 1505625847967776798,      # GMT-6 (CT)
             'role_gmt5': 1446396812264210483,      # GMT-5 (EST)
             'role_gmt0': 1446396816626024478,      # GMT±0 (GMT)
             'role_gmt1': 1446396816797990943,      # GMT+1 (CET)
             'role_gmt2': 1446396817372872764,      # GMT+2 (EET)
             'role_gmt3': 1446396818127585381,      # GMT+3 (ARAT)
+            'role_gmt4': 1505624900692475964,      # GMT+4 (GST)
             'role_gmt8_cst': 1446396818589094009,  # GMT+8 (CST)
             'role_gmt9': 1446396819134222490,      # GMT+9 (JST)
             'role_gmt10': 1446396975367847939      # GMT+10 (AEST)
